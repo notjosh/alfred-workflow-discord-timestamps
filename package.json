@@ -1,0 +1,26 @@
+{
+  "name": "alfred-workflow-discord-timestamps",
+  "version": "1.0.0",
+  "type": "module",
+  "private": true,
+  "packageManager": "pnpm@10.24.0",
+  "scripts": {
+    "build": "esbuild src/index.js --bundle --platform=node --format=esm --outfile=dist/index.js",
+    "dev": "esbuild src/index.js --bundle --platform=node --format=esm --outfile=dist/index.js --watch",
+    "link-workflow": "./scripts/link-workflow.sh",
+    "start": "node dist/index.js",
+    "generate-icon": "node scripts/generate-icon.js",
+    "generate-clock-icons": "node scripts/generate-clock-icons.js",
+    "format": "prettier --write .",
+    "format:check": "prettier --check .",
+    "test": "node --test src/index.test.js"
+  },
+  "dependencies": {
+    "chrono-node": "^2.7.7"
+  },
+  "devDependencies": {
+    "esbuild": "^0.24.2",
+    "prettier": "^3.8.1",
+    "sharp": "^0.34.5"
+  }
+}
