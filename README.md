@@ -58,10 +58,11 @@ Now type `dt ...` in Alfred and it runs your local code. No restart needed — j
 ### Releasing
 
 ```bash
-./scripts/bump-version-and-push-for-release.sh patch  # or minor, major
+./scripts/bump-version-and-push-for-release.sh patch    # or minor, major
+./scripts/bump-version-and-push-for-release.sh current  # release current version as-is
 ```
 
-This bumps the version in `package.json` and `info.plist`, creates a git tag, and pushes. The GitHub Action builds and attaches a `.alfredworkflow` to the release.
+This tags and pushes to trigger the release workflow. `patch`, `minor`, and `major` bump the version in `package.json` and `info.plist` first; `current` releases what's already there. The GitHub Action builds and attaches a `.alfredworkflow` to the release.
 
 ## License
 
