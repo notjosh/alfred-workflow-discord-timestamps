@@ -1,32 +1,23 @@
-import * as chrono from "chrono-node";
+import { casual } from "chrono-node";
+import { clockIcon } from "./clock-icon.js";
+import { formatRelative } from "./format-relative.js";
 
 const REVERSE_MATCH = /^<t:(\d+)(?::([a-zA-Z]))?>$|^(\d{10,})$/;
 
-export function clockIcon(date) {
-  const h = date.getHours() % 12;
-  const m = Math.floor(date.getMinutes() / 5) * 5;
-  return `icons/clock-${String(h).padStart(2, "0")}-${String(m).padStart(2, "0")}.png`;
-}
-
-export function formatRelative(date, now) {
-  const diffMs = date.getTime() - now.getTime();
-  const absDiffMs = Math.abs(diffMs);
-  const rtf = new Intl.RelativeTimeFormat("en", { numeric: "auto" });
-
-  if (absDiffMs < 60_000)
-    return rtf.format(Math.round(diffMs / 1000), "second");
-  if (absDiffMs < 3_600_000)
-    return rtf.format(Math.round(diffMs / 60_000), "minute");
-  if (absDiffMs < 86_400_000)
-    return rtf.format(Math.round(diffMs / 3_600_000), "hour");
-  if (absDiffMs < 2_592_000_000)
-    return rtf.format(Math.round(diffMs / 86_400_000), "day");
-  if (absDiffMs < 31_536_000_000)
-    return rtf.format(Math.round(diffMs / 2_592_000_000), "month");
-  return rtf.format(Math.round(diffMs / 31_536_000_000), "year");
-}
-
-export function parseQuery(query, now) {
+/**
+ * Parses a user query and returns Alfred Script Filter items.
+ *
+ * Supports two modes:
+ * - **Reverse**: a Discord timestamp or bare unix timestamp → formatted dates
+ * - **Forward**: natural language → Discord `<t:…>` timestamps
+ *
+ * @param {string} query - the raw user input from Alfred
+ * @param {Date} now - the current time (injected for testability)
+ * @param {object} [options]
+ * @param {string} [options.locale] - BCP 47 locale tag; omit for system default
+ * @returns {Array<{title: string, subtitle: string, arg?: string, valid?: boolean, icon?: {path: string}}>}
+ */
+export function parseQuery(query, now, { locale } = {}) {
   if (!query.trim()) {
     return [
       {
@@ -44,12 +35,12 @@ export function parseQuery(query, now) {
     const date = new Date(ts * 1000);
 
     const fmt = (options) =>
-      new Intl.DateTimeFormat("en-US", options).format(date);
+      new Intl.DateTimeFormat(locale, options).format(date);
 
     const formats = [
       { label: "Time", formatted: fmt({ timeStyle: "short" }) },
       { label: "Time w/ Seconds", formatted: fmt({ timeStyle: "medium" }) },
-      { label: "Relative", formatted: formatRelative(date, now) },
+      { label: "Relative", formatted: formatRelative(date, now, locale) },
       { label: "Short Date", formatted: fmt({ dateStyle: "short" }) },
       { label: "Date", formatted: fmt({ dateStyle: "long" }) },
       {
@@ -72,7 +63,7 @@ export function parseQuery(query, now) {
   }
 
   // Forward mode: natural language → Discord timestamps
-  const date = chrono.casual.parseDate(query, now, { forwardDate: true });
+  const date = casual.parseDate(query, now, { forwardDate: true });
 
   if (!date) {
     return [
@@ -87,7 +78,7 @@ export function parseQuery(query, now) {
   const ts = Math.floor(date.getTime() / 1000);
 
   const fmt = (options) =>
-    new Intl.DateTimeFormat("en-US", options).format(date);
+    new Intl.DateTimeFormat(locale, options).format(date);
 
   const formats = [
     { code: "t", label: "Time", subtitle: fmt({ timeStyle: "short" }) },
@@ -96,7 +87,11 @@ export function parseQuery(query, now) {
       label: "Time w/ Seconds",
       subtitle: fmt({ timeStyle: "medium" }),
     },
-    { code: "R", label: "Relative", subtitle: formatRelative(date, now) },
+    {
+      code: "R",
+      label: "Relative",
+      subtitle: formatRelative(date, now, locale),
+    },
     { code: "d", label: "Short Date", subtitle: fmt({ dateStyle: "short" }) },
     { code: "D", label: "Date", subtitle: fmt({ dateStyle: "long" }) },
     {

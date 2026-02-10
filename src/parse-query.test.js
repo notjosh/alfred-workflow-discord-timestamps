@@ -1,21 +1,21 @@
 import { describe, it } from "node:test";
 import assert from "node:assert/strict";
-import { clockIcon, parseQuery } from "./lib.js";
+import { parseQuery } from "./parse-query.js";
 
 const FIXED_NOW = new Date("2026-02-10T12:00:00Z");
+const OPTS = { locale: "en-US" };
 
 describe("parseQuery", () => {
   it("returns a prompt item for empty input", () => {
-    const items = parseQuery("", FIXED_NOW);
+    const items = parseQuery("", FIXED_NOW, OPTS);
     assert.equal(items.length, 1);
     assert.equal(items[0].valid, false);
     assert.match(items[0].title, /type a date/i);
   });
 
   it("handles <t:1770757200:t> (reverse mode with format code)", () => {
-    const items = parseQuery("<t:1770757200:t>", FIXED_NOW);
+    const items = parseQuery("<t:1770757200:t>", FIXED_NOW, OPTS);
     assert.equal(items.length, 7);
-    // All titles should be formatted dates, not Discord timestamp syntax
     for (const item of items) {
       assert.ok(
         !item.title.startsWith("<t:"),
@@ -24,8 +24,19 @@ describe("parseQuery", () => {
     }
   });
 
+  it("respects locale in reverse mode (de-DE)", () => {
+    const items = parseQuery("<t:1770757200:t>", FIXED_NOW, {
+      locale: "de-DE",
+    });
+    const fullDateTime = items.find((i) => i.subtitle === "Full Date/Time");
+    assert.ok(
+      fullDateTime.title.includes("Dienstag"),
+      `expected German day name, got: ${fullDateTime.title}`,
+    );
+  });
+
   it("handles <t:1770757200> (reverse mode without format code)", () => {
-    const items = parseQuery("<t:1770757200>", FIXED_NOW);
+    const items = parseQuery("<t:1770757200>", FIXED_NOW, OPTS);
     assert.equal(items.length, 7);
     for (const item of items) {
       assert.ok(
@@ -36,7 +47,7 @@ describe("parseQuery", () => {
   });
 
   it("handles bare timestamp 1770757200 (reverse mode)", () => {
-    const items = parseQuery("1770757200", FIXED_NOW);
+    const items = parseQuery("1770757200", FIXED_NOW, OPTS);
     assert.equal(items.length, 7);
     for (const item of items) {
       assert.ok(
@@ -47,7 +58,7 @@ describe("parseQuery", () => {
   });
 
   it("does not treat short numbers as timestamps (< 10 digits)", () => {
-    const items = parseQuery("12345", FIXED_NOW);
+    const items = parseQuery("12345", FIXED_NOW, OPTS);
     // Should fall through to chrono, not reverse mode
     // Either chrono parses it or it returns an error item
     if (items.length === 1) {
@@ -60,7 +71,7 @@ describe("parseQuery", () => {
   });
 
   it("parses 'tomorrow at 3pm' (forward mode)", () => {
-    const items = parseQuery("tomorrow at 3pm", FIXED_NOW);
+    const items = parseQuery("tomorrow at 3pm", FIXED_NOW, OPTS);
     assert.equal(items.length, 7);
     for (const item of items) {
       assert.match(item.title, /^<t:\d+:[a-zA-Z]>$/);
@@ -68,39 +79,9 @@ describe("parseQuery", () => {
   });
 
   it("returns an error item for unparseable input", () => {
-    const items = parseQuery("gobbledygook", FIXED_NOW);
+    const items = parseQuery("gobbledygook", FIXED_NOW, OPTS);
     assert.equal(items.length, 1);
     assert.equal(items[0].valid, false);
     assert.match(items[0].title, /couldn't parse/i);
-  });
-});
-
-describe("clockIcon", () => {
-  it("returns correct path for midnight (0:00)", () => {
-    assert.equal(
-      clockIcon(new Date("2026-01-01T00:00:00")),
-      "icons/clock-00-00.png",
-    );
-  });
-
-  it("returns correct path for 3:17 (rounds minutes down to 15)", () => {
-    assert.equal(
-      clockIcon(new Date("2026-01-01T03:17:00")),
-      "icons/clock-03-15.png",
-    );
-  });
-
-  it("returns correct path for 15:45 (wraps to 12h)", () => {
-    assert.equal(
-      clockIcon(new Date("2026-01-01T15:45:00")),
-      "icons/clock-03-45.png",
-    );
-  });
-
-  it("returns correct path for 12:59 (wraps hour, rounds minutes to 55)", () => {
-    assert.equal(
-      clockIcon(new Date("2026-01-01T12:59:00")),
-      "icons/clock-00-55.png",
-    );
   });
 });
